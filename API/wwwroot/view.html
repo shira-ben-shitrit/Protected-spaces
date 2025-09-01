@@ -1,0 +1,208 @@
+﻿<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>אפליקצית מצא מגן</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body {
+            background-color: #eaffea;
+            font-family: 'Papyrus';
+            color: #204d20;
+            padding: 30px;
+            text-align: center;
+        }
+
+        h1 {
+            font-family: 'Papyrus';
+            color: #2d862d;
+        }
+
+        form {
+            background-color: #ffffff;
+            border: 2px solid #a8d5a8;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px auto;
+            max-width: 600px;
+        }
+
+        input, button {
+            margin: 5px;
+            padding: 8px;
+            border-radius: 10px;
+            border: 1px solid #a8d5a8;
+            width: 90%;
+        }
+
+        button {
+            background-color: #4caf50;
+            color: white;
+            cursor: pointer;
+        }
+
+            button:hover {
+                background-color: #45a049;
+            }
+
+        .result {
+            white-space: pre-wrap;
+            text-align: left;
+            direction: ltr;
+            background: #f4fff4;
+            border: 1px dashed #a8d5a8;
+            padding: 10px;
+            margin: 10px auto;
+            max-width: 90%;
+        }
+
+        label {
+            display: block;
+            margin: 10px 0 0;
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 10px;
+            margin: 10px auto;
+            width: 90%;
+            direction: rtl;
+        }
+
+            .checkbox-row input[type="checkbox"] {
+                width: 20px;
+                height: 20px;
+                accent-color: #4caf50;
+            }
+
+        #map {
+            height: 300px;
+            margin: 20px auto;
+            max-width: 600px;
+            border-radius: 10px;
+            border: 2px solid #a8d5a8;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>אפליקצית מצא מגן</h1>
+
+    <!-- הוספת כתובת -->
+    <form id="addForm">
+        <h2>הוספת כתובת</h2>
+        <input type="number" id="mapPoint1" step="0.000001" placeholder="הכנס קו אורך" required>
+        <input type="number" id="mapPoint2" step="0.000001" placeholder="הכנס קו רוחב" required>
+        <input type="text" id="structure_name" placeholder="הכנס שם מבנה" required>
+
+        <div class="checkbox-row">
+            <input type="checkbox" id="isOpen247">
+            <label for="isOpen247">פתוח 24/7</label>
+        </div>
+
+        <input type="number" id="year" placeholder="הכנס שנת בנייה" required>
+        <input type="text" id="contactPerson" placeholder="הכנס איש קשר" required>
+        <input type="number" id="phone" placeholder="הכנס מספר טלפון" required>
+        <input type="text" id="sms" placeholder="SMS" required>
+        <input type="number" id="capacity" placeholder="הכנס קיבולת" required>
+        <input type="number" id="occupancy" placeholder="הכנס תפוסה נוכחית" required>
+
+        <button type="submit">הוסף כתובת</button>
+    </form>
+
+    <!-- שליפה לפי חודש -->
+    <form id="monthForm">
+        <h2>שליפה לפי חודש</h2>
+        <input type="month" id="monthInput" required>
+        <button type="submit">חפש</button>
+    </form>
+
+    <!-- שליפה לפי מיקום -->
+    <form id="locationForm">
+        <h2>שליפה לפי מיקום</h2>
+        <input type="number" id="point1" step="0.000001" placeholder="קו אורך" required>
+        <input type="number" id="point2" step="0.000001" placeholder="קו רוחב" required>
+        <button type="submit">מצא קרובים</button>
+    </form>
+
+    <!-- מפה לבחירת מיקום -->
+    <div id="map"></div>
+
+    <!-- תוצאות -->
+    <div class="result" id="output"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        const baseUrl = "http://localhost:5212/Addresses";
+
+        // הוספת כתובת
+        document.getElementById("addForm").onsubmit = async (e) => {
+            e.preventDefault();
+            const data = {
+                mapLocation_point1: parseFloat(document.getElementById("mapPoint1").value),
+                mapLocation_point2: parseFloat(document.getElementById("mapPoint2").value),
+                structure: {
+                    id: 0,
+                    name: document.getElementById("structure_name").value
+                },
+                isOpen24_7: document.getElementById("isOpen247").checked,
+                constructionYear: parseInt(document.getElementById("year").value),
+                contactPerson: document.getElementById("contactPerson").value,
+                phoneNumber: document.getElementById("phone").value,
+                sms: document.getElementById("sms").value,
+                capacity: parseInt(document.getElementById("capacity").value),
+                currentOccupancy: parseInt(document.getElementById("occupancy").value)
+            };
+
+            const res = await fetch(baseUrl, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            const result = await res.text();
+            document.getElementById("output").innerText = "תוצאה:\n" + result;
+        };
+
+        // שליפה לפי חודש
+        document.getElementById("monthForm").onsubmit = async (e) => {
+            e.preventDefault();
+            const month = document.getElementById("monthInput").value + "-01";
+            const res = await fetch(`${baseUrl}/${month}`);
+            const data = await res.json();
+            document.getElementById("output").innerText = "תוצאה לפי חודש:\n" + JSON.stringify(data, null, 2);
+        };
+
+        // שליפה לפי מיקום
+        document.getElementById("locationForm").onsubmit = async (e) => {
+            e.preventDefault();
+            const point1 = document.getElementById("point1").value;
+            const point2 = document.getElementById("point2").value;
+            const res = await fetch(`${baseUrl}/nearest?point1=${point1}&point2=${point2}`);
+            const data = await res.json();
+            document.getElementById("output").innerText = "כתובות קרובות:\n" + JSON.stringify(data, null, 2);
+        };
+
+        // Leaflet מפה לחיצה
+        let map = L.map('map').setView([32.0853, 34.7818], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        let marker;
+        map.on('click', function (e) {
+            const lat = e.latlng.lat.toFixed(6);
+            const lng = e.latlng.lng.toFixed(6);
+
+            if (marker) map.removeLayer(marker);
+            marker = L.marker(e.latlng).addTo(map);
+
+            document.getElementById("point2").value = lat;
+            document.getElementById("point1").value = lng;
+        });
+    </script>
+
+</body>
+</html>
